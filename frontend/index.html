@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AeroRehab</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #f5f7fa; color: #1d2733; }
+    h1 { font-size: 1.4rem; margin: 0 0 12px; }
+    .card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .kis { font-size: 3rem; font-weight: 700; }
+    .GREEN { color: #1f9d55; } .YELLOW { color: #c48a00; } .RED { color: #d13b2c; }
+    button { padding: 8px 14px; border: 0; border-radius: 6px; background: #2b6cb0; color: #fff; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>AeroRehab: Knee Integrity Monitor</h1>
+  <div class="card">
+    <button onclick="runDemo('gradual_decline')">Run demo: gradual decline</button>
+    <button onclick="runDemo('healthy')">Run demo: healthy</button>
+  </div>
+  <div class="card">
+    <div>Knee Integrity Score</div>
+    <div id="kis" class="kis">--</div>
+    <div id="band">Waiting for data</div>
+  </div>
+  <div class="card">
+    <strong>Recommendations</strong>
+    <ul id="recs"><li>None yet</li></ul>
+  </div>
+  <p style="font-size:.8rem;color:#667">Simulated data. Prototype only. Not for clinical use.</p>
+
+  <script>
+    const USER = "demo";
+    async function runDemo(name) {
+      await fetch(`/api/simulate/${name}?user_id=${USER}`, { method: "POST" });
+      await refresh();
+    }
+    async function refresh() {
+      const r = await fetch(`/api/users/${USER}/status`);
+      if (!r.ok) return;
+      const s = await r.json();
+      document.getElementById("kis").textContent = s.kis ?? "--";
+      const band = document.getElementById("band");
+      band.textContent = s.band ?? "Baseline building";
+      band.className = s.band || "";
+      const list = document.getElementById("recs");
+      list.innerHTML = "";
+      (s.recommendations || []).forEach(x => {
+        const li = document.createElement("li");
+        li.textContent = `[${x.level}] ${x.message}`;
+        list.appendChild(li);
+      });
+    }
+    refresh();
+  </script>
+</body>
+</html>
