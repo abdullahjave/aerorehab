@@ -10,6 +10,7 @@ from pathlib import Path
 from dataclasses import asdict
 
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -22,6 +23,15 @@ LOG_DIR = Path("logs")
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
 
 app = FastAPI(title="AeroRehab API", version="0.2")
+
+# CORS middleware: allow Next.js frontend (port 3000) to call this backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:3000", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
