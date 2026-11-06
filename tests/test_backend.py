@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
 
-from backend.main import app, monitors
+from backend.main import app
+from backend.database import Base, SessionLocal
+from backend import crud
 
 client = TestClient(app)
 
@@ -9,7 +11,16 @@ GOOD = dict(rom_deg=115, peak_flexion_deg=120, smoothness=12.5, asymmetry=0.01,
 
 
 def setup_function():
-    monitors.clear()
+    """Clean up test database before each test."""
+    # Create tables first
+    Base.metadata.create_all(bind=SessionLocal().bind)
+    db = SessionLocal()
+    # Delete all test data
+    db.query(crud.models.Session).delete()
+    db.query(crud.models.Report).delete()
+    db.query(crud.models.Astronaut).delete()
+    db.commit()
+    db.close()
 
 
 def test_manual_flow_reaches_baseline_then_scores():
@@ -43,3 +54,19 @@ def test_bad_input_rejected():
     client.post("/api/users/b1")
     r = client.post("/api/users/b1/sessions", json=dict(GOOD, pain_0_10=42))
     assert r.status_code == 422
+
+
+def test_data_persists_after_restart():
+    """Test that data survives server restart (simulated by creating a new client)."""
+    # Create user and add sessions
+    client.post("/api/users/persist-test")
+    for _ in range(5):
+        client.post("/api/users/persist-test/sessions", json=GOOD)
+
+    # Simulate restart by creating a new TestClient
+    client2 = TestClient(app)
+    r = client2.get("/api/users/persist-test/status")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["sessions"] == 5
+    assert body["baseline_ready"] is True
